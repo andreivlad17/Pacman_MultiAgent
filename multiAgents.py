@@ -18,6 +18,7 @@ import random, util
 
 from game import Agent
 
+
 class ReflexAgent(Agent):
     """
     A reflex agent chooses an action at each choice point by examining
@@ -27,7 +28,6 @@ class ReflexAgent(Agent):
     it in any way you see fit, so long as you don't touch our method
     headers.
     """
-
 
     def getAction(self, gameState):
         """
@@ -45,7 +45,7 @@ class ReflexAgent(Agent):
         scores = [self.evaluationFunction(gameState, action) for action in legalMoves]
         bestScore = max(scores)
         bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
-        chosenIndex = random.choice(bestIndices) # Pick randomly among the best
+        chosenIndex = random.choice(bestIndices)  # Pick randomly among the best
 
         "Add more of your code here if you want to"
 
@@ -75,9 +75,32 @@ class ReflexAgent(Agent):
 
         "*** YOUR CODE HERE ***"
 
+        foodList = newFood.asList()
+        foodCount = len(foodList)
+        closestDistance = 999999  # Initializeaza ca distanta maxima posibila
 
+        if foodCount == 0:  # Daca nu este mancare, nu va exista reper pentru distanta, deci cea mai
+            closestDistance = 0  # apropiata distanta este 0
+        else:
+            # Pentru fiecare punct de mancare, cea mai mica distanta va fi minimul dintre distanta minima curenta si
+            # distanta Manhattan dintre pozitia curenta si punctul de mancare curent + foodCount * 100
+            # foodCount * 100 reprezinta ......
+            for food in foodList:
+                closestDistance = min(manhattanDistance(food, newPos) + foodCount * 100, closestDistance)
 
-        return successorGameState.getScore()
+        # In Pacman scorul scade odata cu parcurgerea labirintului, fiecare miscare fiind importanta
+        score = -closestDistance  # Actualizarea scorului in functie de fiecare caz
+
+        # Verific daca exista fantome care sa aiba pozitiala distanta pe grid mai mica
+        # sau egala cu 1, caz in care scorul va fi scazut considerabil, pierzand de altfel si runda
+        for i in range(len(newGhostStates)):
+            ghostPosition = successorGameState.getGhostPosition(i + 1)
+            if manhattanDistance(newPos, ghostPosition) <= 1:
+                score -= 999999
+                break
+
+        return score  # returnez scorul final, calculat in functie de pozitiile fantomelor si a adunarii mancarii
+
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -88,6 +111,7 @@ def scoreEvaluationFunction(currentGameState):
     (not reflex agents).
     """
     return currentGameState.getScore()
+
 
 class MultiAgentSearchAgent(Agent):
     """
@@ -104,10 +128,11 @@ class MultiAgentSearchAgent(Agent):
     is another abstract class.
     """
 
-    def __init__(self, evalFn = 'scoreEvaluationFunction', depth = '2'):
-        self.index = 0 # Pacman is always agent index 0
+    def __init__(self, evalFn='scoreEvaluationFunction', depth='2'):
+        self.index = 0  # Pacman is always agent index 0
         self.evaluationFunction = util.lookup(evalFn, globals())
         self.depth = int(depth)
+
 
 class MinimaxAgent(MultiAgentSearchAgent):
     """
@@ -140,6 +165,7 @@ class MinimaxAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
 
+
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
     Your minimax agent with alpha-beta pruning (question 3)
@@ -151,6 +177,7 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         """
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -167,6 +194,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
 
+
 def betterEvaluationFunction(currentGameState):
     """
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
@@ -176,6 +204,7 @@ def betterEvaluationFunction(currentGameState):
     """
     "*** YOUR CODE HERE ***"
     util.raiseNotDefined()
+
 
 # Abbreviation
 better = betterEvaluationFunction
