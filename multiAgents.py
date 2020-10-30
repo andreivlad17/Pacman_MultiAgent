@@ -10,6 +10,7 @@
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
+import math
 import operator
 
 from util import manhattanDistance
@@ -71,33 +72,37 @@ class ReflexAgent(Agent):
         newPos = successorGameState.getPacmanPosition()
         newFood = successorGameState.getFood()
         newGhostStates = successorGameState.getGhostStates()
-        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         foodList = newFood.asList()
         foodCount = len(foodList)
-        closestDistance = 999999  # Initializeaza ca distanta maxima posibila
+        closestDistance = float("inf")  # Initializeaza ca distanta maxima posibila
 
         if foodCount == 0:  # Daca nu este mancare, nu va exista reper pentru distanta, deci cea mai
             closestDistance = 0  # apropiata distanta este 0
         else:
             # Pentru fiecare punct de mancare, cea mai mica distanta va fi minimul dintre distanta minima curenta si
-            # distanta Manhattan dintre pozitia curenta si punctul de mancare curent + foodCount * 100
-            # foodCount * 100 reprezinta ......
+            # distanta Manhattan dintre pozitia curenta si punctul de mancare curent + foodCount * 100, unde
+            # foodCount * 100 va influenta decizia prin cantitatea de mancare ramasa, pentru prioritizarea actiunilor
             for food in foodList:
                 closestDistance = min(manhattanDistance(food, newPos) + foodCount * 100, closestDistance)
 
-        # In Pacman scorul scade odata cu parcurgerea labirintului, fiecare miscare fiind importanta
-        score = -closestDistance  # Actualizarea scorului in functie de fiecare caz
+        # Actualizeaza scorul in functie de variabila decizionala din aceasta parte a metodei, closestDistance.
+        # Cu cat scorul ramas este mai mare, cu atat actiunea analizata este mai recomandata
+        score = -closestDistance
 
-        # Verific daca exista fantome care sa aiba pozitiala distanta pe grid mai mica
-        # sau egala cu 1, caz in care scorul va fi scazut considerabil, pierzand de altfel si runda
-        for i in range(len(newGhostStates)):
-            ghostPosition = successorGameState.getGhostPosition(i + 1)
-            if manhattanDistance(newPos, ghostPosition) <= 1:
-                score -= 999999
+        # Verific daca exista fantome care sa aiba distanta pe grid mai micasau egala cu 1 sau
+        # 2(prin teste am observat ca cresc sansele daca se alege random), caz in care scorul va fi scazut,
+        # in asa fel incat sa nu se faca urmatoarea miscare, care ar duce la pierderea rundei
+        for i in range(1, len(newGhostStates) + 1):
+            ghostPosition = successorGameState.getGhostPosition(i)
+            if manhattanDistance(newPos, ghostPosition) < random.randint(1, 2):
+                score -= float("inf")
                 break
 
-        return score  # returnez scorul final, calculat in functie de pozitiile fantomelor si a adunarii mancarii
+        if action == 'Stop':
+            return float("-inf")
+
+        return score + random.randint(-6, 6)
 
 
 def scoreEvaluationFunction(currentGameState):
@@ -254,7 +259,9 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         value = ("max", float("-inf"))
         for action in state.getLegalActions(index):
             # value va lua valoarea tuplei cu valoare flotanta(index 1) maxima
-            value = max(value, (action, self.alphaBetaSearch((depth + 1) % state.getNumAgents(), depth + 1, state.generateSuccessor(index, action), alpha, beta)), key=operator.itemgetter(1))
+            value = max(value, (action, self.alphaBetaSearch((depth + 1) % state.getNumAgents(), depth + 1,
+                                                             state.generateSuccessor(index, action), alpha, beta)),
+                        key=operator.itemgetter(1))
 
             # Pruning - nu functioneaza cu >= ca in indrumator
             if value[1] > beta:
@@ -270,7 +277,9 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         value = ("min", float("inf"))
         for action in state.getLegalActions(index):
             # value va lua valoarea tuplei cu valoare flotanta(index 1) minima
-            value = min(value, (action, self.alphaBetaSearch((depth + 1) % state.getNumAgents(), depth + 1, state.generateSuccessor(index, action), alpha, beta)), key=operator.itemgetter(1))
+            value = min(value, (action, self.alphaBetaSearch((depth + 1) % state.getNumAgents(), depth + 1,
+                                                             state.generateSuccessor(index, action), alpha, beta)),
+                        key=operator.itemgetter(1))
 
             # Pruning - nu functioneaza cu <= ca in indrumator
             if value[1] < alpha:
@@ -288,12 +297,12 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
 
     def getAction(self, gameState):
         """
-        Returns the expectimax action using self.depth and self.evaluationFunction
+          Returns the expectimax action using self.depth and self.evaluationFunction
 
-        All ghosts should be modeled as choosing uniformly at random from their
-        legal moves.
+          All ghosts should be modeled as choosing uniformly at random from their
+          legal moves.
         """
-        "*** YOUR CODE HERE ***"
+
         util.raiseNotDefined()
 
 
@@ -304,8 +313,41 @@ def betterEvaluationFunction(currentGameState):
 
     DESCRIPTION: <write something here so we know what you did>
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    pacmanPosition = currentGameState.getPacmanPosition()
+    foodList = currentGameState.getFood().asList()
+
+    foodDistance = 0
+
+    returnedScore = currentGameState.getScore()
+
+    for food in foodList:
+        foodDistance += 2.5 * manhattanDistance(pacmanPosition, food)
+
+    # Verifica daca exista fantome in apropiere. In cazul in care o fantoma este la o distanta mai mica sau egala
+    # cu 4, variabila decizionala ghostProximity va fi diferita de 0, deci va influenta decizia mai mult sau mai putin,
+    # in functie de distanta rezultata
+    ghostProximity = 0
+    for currentGhost in currentGameState.getGhostPositions():
+        dist = max(4 - manhattanDistance(pacmanPosition, currentGhost), 0)
+        ghostProximity += dist**3
+
+    # Principalul obiectiv in acest joc este adunarea mancarii, de aceea agentul va trebui sa prioritizeze
+    # punctele de mancare si in functie de cantitatea acestora la un anumit moment
+    returnedScore -= 100 * len(foodList)
+    if currentGameState.isLose():
+        returnedScore -= 5000
+    elif currentGameState.isWin():
+        returnedScore += 5000
+
+    returnedScore -= foodDistance
+    returnedScore -= ghostProximity
+    # In cazul in care nu exista mancare care sa duca la luarea unei decizii sau distanta prea mica fata de fantome,
+    # Pacman ar ramane blocat intre 2 alegeri. Pentru a evita acest lucru a fost introdusa o valoare random (in limite
+    # testate, (-6, 6) avand average score cu ~100-200 mai mare decat alte valori)
+    # Aceasta valoare adaugata va duce la alegerea uneia dintre cele 2 stari
+    returnedScore += random.randint(-6, 6)
+
+    return returnedScore    # Scorul rezultat in urma analizei tuturor variabilelor decizionale
 
 
 # Abbreviation
