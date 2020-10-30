@@ -10,7 +10,7 @@
 # (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
 # Student side autograding was added by Brad Miller, Nick Hay, and
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
-
+import operator
 
 from util import manhattanDistance
 from game import Directions
@@ -133,7 +133,6 @@ class MultiAgentSearchAgent(Agent):
 
 
 class MinimaxAgent(MultiAgentSearchAgent):
-
     """
     Your minimax agent (question 2)
     """
@@ -231,54 +230,55 @@ class MinimaxAgent(MultiAgentSearchAgent):
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
-    Your minimax agent with alpha-beta pruning (question 3)
+      Your minimax agent with alpha-beta pruning (question 3)
     """
 
-    def getAction(self, gameState):
+    def getAction(self, state):
         """
-        Returns the minimax action using self.depth and self.evaluationFunction
+          Returns the minimax action using self.depth and self.evaluationFunction
         """
+        v = self.maxValue(0, 0, state, float("-inf"), float("inf"))
+        return v[0]
 
-        action, value = self.maxValue(0, 0, gameState, float("-inf"), float("inf"))
-
-        return action
-
-    def alphaBeta(self, depth, index, state, alpha, beta):
-        if depth is self.depth * state.getNumAgents() or state.isLose() or state.isWin():
-            return None, self.evaluationFunction(state)
-
+    def alphaBetaSearch(self, index, depth, state, alpha, beta):
+        if state.isLose() or state.isWin() or depth is self.depth * state.getNumAgents():
+            return self.evaluationFunction(state)
         if index == 0:
-            return self.maxValue(depth, index, state, alpha, beta)
+            return self.maxValue(index, depth, state, alpha, beta)[1]
         else:
-            return self.minValue(depth, index, state, alpha, beta)
+            return self.minValue(index, depth, state, alpha, beta)[1]
 
-    def maxValue(self, depth, index, state, alpha, beta):
-        value = float("-inf")
-        nextIndex = (++depth) % state.getNumAgents()
-
+    def maxValue(self, index, depth, state, alpha, beta):
+        if state.isLose() or state.isWin() or depth is self.depth * state.getNumAgents():
+            return self.evaluationFunction(state)
+        value = ("max", float("-inf"))
         for action in state.getLegalActions(index):
-            value = max(self.alphaBeta(++depth, nextIndex, state.generateSuccessor(index, action), alpha, beta)[1], value)
+            # value va lua valoarea tuplei cu valoare flotanta(index 1) maxima
+            value = max(value, (action, self.alphaBetaSearch((depth + 1) % state.getNumAgents(), depth + 1, state.generateSuccessor(index, action), alpha, beta)), key=operator.itemgetter(1))
 
-            if value >= beta:
-                return "max", value
+            # Pruning - nu functioneaza cu >= ca in indrumator
+            if value[1] > beta:
+                return value
             else:
-                alpha = max(alpha, value)
+                alpha = max(alpha, value[1])
 
-        return "max", value
+        return value
 
-    def minValue(self, depth, index, state, alpha, beta):
-        value = float("inf")
-        nextIndex = (++depth) % state.getNumAgents()
-
+    def minValue(self, index, depth, state, alpha, beta):
+        if state.isLose() or state.isWin() or depth is self.depth * state.getNumAgents():
+            return self.evaluationFunction(state)
+        value = ("min", float("inf"))
         for action in state.getLegalActions(index):
-            value = max(self.alphaBeta(++depth, nextIndex, state.generateSuccessor(index, action), alpha, beta)[1], value)
+            # value va lua valoarea tuplei cu valoare flotanta(index 1) minima
+            value = min(value, (action, self.alphaBetaSearch((depth + 1) % state.getNumAgents(), depth + 1, state.generateSuccessor(index, action), alpha, beta)), key=operator.itemgetter(1))
 
-            if value >= beta:
-                return "min", value
+            # Pruning - nu functioneaza cu <= ca in indrumator
+            if value[1] < alpha:
+                return value
             else:
-                alpha = min(alpha, value)
+                beta = min(beta, value[1])
 
-        return "min", value
+        return value
 
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
