@@ -133,9 +133,25 @@ class MultiAgentSearchAgent(Agent):
 
 
 class MinimaxAgent(MultiAgentSearchAgent):
+
     """
     Your minimax agent (question 2)
     """
+
+    PACMAN_INDEX = 0
+
+    def utility(self, gameState):
+        """
+        Functia de utilitate care calculeaza valoarea unei actiuni finale
+        """
+        return self.evaluationFunction(gameState)
+
+    def terminalTest(self, gameState, depth):
+        """
+        Functia verifica daca starea actiunii actuale este una finala sau daca s-a atins adancimea(depth-ul)
+        setat initial
+        """
+        return (len(gameState.getLegalActions(0)) == 0) or self.depth == depth
 
     def getAction(self, gameState):
         """
@@ -146,13 +162,13 @@ class MinimaxAgent(MultiAgentSearchAgent):
 
         gameState.getLegalActions(agentIndex):
         Returns a list of legal actions for an agent
-        agentIndex=0 means Pacman, ghosts are >= 1
+        agentIndex=0 means Pacman, ghosts are >= 1____
 
         gameState.generateSuccessor(agentIndex, action):
-        Returns the successor game state after an agent takes an action
+        Returns the successor game state after an agent takes an action_____
 
         gameState.getNumAgents():
-        Returns the total number of agents in the game
+        Returns the total number of agents in the game _____
 
         gameState.isWin():
         Returns whether or not the game state is a winning state
@@ -161,7 +177,56 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        maxValue = -99999999
+        bestAction = None  # cea mai buna actiune care poate fi aleasa
+
+        for action in gameState.getLegalActions(self.PACMAN_INDEX):
+            # se itereaza prin lista de actiuni pe care le poate face pacman si se cauta cea cu valoare MAXIMA
+            # valoarea actiunilor este data de decizia adversarului, astfel se aplica functia minValue pe actiuni
+            tempValue = self.minValue(1, gameState.generateSuccessor(0, action), 0)
+            if tempValue > maxValue:
+                maxValue = tempValue
+                bestAction = action  # selectam actiunea cu valoarea cea mai mare(actiunea cea mai buna)
+
+        return bestAction
+
+    def maxValue(self, agentIndex, gameState, depth):  # functia pacman-ului
+        if self.terminalTest(gameState, depth):  # se verifica daca actiunea este una finala
+            return self.utility(gameState)
+        v = -99999999
+        for action in gameState.getLegalActions(agentIndex):
+            # se itereaza prin lista de actiuni pe care le poate face pacman si se cauta cea cu valoare MAXIMA
+            # valoarea actiunilor este data de decizia adversarului
+            # intrucat adversarul este o fantoma(oponent), se apeleaza functia minValue
+            successorState = gameState.generateSuccessor(agentIndex, action)  # starea succesorului
+            tempValue = self.minValue(agentIndex + 1, successorState, depth)
+            v = tempValue if tempValue > v else v  # valoarea maxima
+        return v
+
+    def minValue(self, agentIndex, gameState, depth):  # functia fantomelor
+        if self.terminalTest(gameState, depth):  # se verifica daca actiunea este una finala
+            return self.utility(gameState)
+        v = 99999999
+        if agentIndex < gameState.getNumAgents() - 1:
+            # agentul curent este o fantoma diferita de ultima
+            # intrucat agentul este o fantoma diferita de ultima, urmatorul agent explorat va fi tot o fantoma
+            # se itereaza prin lista de actiuni pe care le poate face fantoma si se cauta cea cu valoare MINIMA
+            for action in gameState.getLegalActions(agentIndex):
+                successorState = gameState.generateSuccessor(agentIndex, action)  # starea succesorului
+                tempValue = self.minValue(agentIndex + 1, successorState, depth)
+                v = tempValue if tempValue < v else v  # valoarea minima
+        else:
+            # ultima fantoma, urmeaza pacman
+            # se itereaza prin lista de actiuni pe care le poate face pacman
+            # intrucat urmeaza pacman se va aplica functia maxValue, insa se va selecta valoarea minima a actiunilor
+            # intrucat agentul curent este o fantoma
+            for action in gameState.getLegalActions(agentIndex):
+                successorState = gameState.generateSuccessor(agentIndex, action)  # starea succesorului
+                tempValue = self.maxValue(self.PACMAN_INDEX, successorState,
+                                          depth + 1)  # incrementare depth(adancime)
+                v = tempValue if tempValue < v else v  # valoarea minima
+        return v
 
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
