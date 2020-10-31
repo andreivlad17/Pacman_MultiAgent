@@ -295,6 +295,21 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
       Your expectimax agent (question 4)
     """
 
+    def utility(self, gameState):
+        """
+        Functia de utilitate care calculeaza valoarea unei actiuni finale
+        """
+        return self.evaluationFunction(gameState)
+
+    def terminalTest(self, gameState, depth):
+        """
+        Functia verifica daca starea actiunii actuale este una finala sau daca s-a atins adancimea(depth-ul)
+        setat initial
+        """
+        return (len(gameState.getLegalActions(0)) == 0) or self.depth == depth
+
+    PACMAN_INDEX = 0
+
     def getAction(self, gameState):
         """
           Returns the expectimax action using self.depth and self.evaluationFunction
@@ -303,7 +318,58 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
           legal moves.
         """
 
-        util.raiseNotDefined()
+        maxValue = -99999999
+        bestAction = None  # cea mai buna actiune care poate fi aleasa
+
+        for action in gameState.getLegalActions(self.PACMAN_INDEX):
+            # se itereaza prin lista de actiuni pe care le poate face pacman si se cauta cea cu valoare MAXIMA
+            # valoarea actiunilor este data de decizia adversarului, astfel se aplica functia minValue pe actiuni
+            tempValue = self.minValue(1, gameState.generateSuccessor(0, action), 0)
+            if tempValue > maxValue:
+                maxValue = tempValue
+                bestAction = action  # selectam actiunea cu valoarea cea mai mare(actiunea cea mai buna)
+
+        return bestAction
+
+    def maxValue(self, agentIndex, gameState, depth):  # functia pacman-ului
+        if self.terminalTest(gameState, depth):  # se verifica daca actiunea este una finala
+            return self.utility(gameState)
+        v = -99999999
+        for action in gameState.getLegalActions(agentIndex):
+            # se itereaza prin lista de actiuni pe care le poate face pacman si se cauta cea cu valoare MAXIMA
+            # valoarea actiunilor este data de decizia adversarului
+            # intrucat adversarul este o fantoma(oponent), se apeleaza functia minValue
+            successorState = gameState.generateSuccessor(agentIndex, action)  # starea succesorului
+            tempValue = self.minValue(agentIndex + 1, successorState, depth)
+            v = tempValue if tempValue > v else v  # valoarea maxima
+        return v
+
+    def minValue(self, agentIndex, gameState, depth):  # functia oponentilor(fantomelor)
+        if self.terminalTest(gameState, depth):  # se verifica daca actiunea este una finala
+            return self.utility(gameState)
+
+        avg_v = 0
+        actionsNum = len(gameState.getLegalActions(agentIndex))
+
+        if agentIndex < gameState.getNumAgents() - 1:
+            # agentul curent este o fantoma diferita de ultima
+            # intrucat agentul este o fantoma diferita de ultima, urmatorul agent explorat va fi tot o fantoma
+            # se itereaza prin lista de actiuni pe care le poate face fantoma si se calculeaza valoarea medie
+            # a actiunilor fantomelor
+            for action in gameState.getLegalActions(agentIndex):
+                successorState = gameState.generateSuccessor(agentIndex, action)  # starea succesorului
+                tempValue = self.minValue(agentIndex + 1, successorState, depth)
+                avg_v += tempValue
+        else:
+            # ultima fantoma, urmeaza pacman
+            # se itereaza prin lista de actiuni pe care le poate face pacman
+            # intrucat urmeaza pacman se va aplica functia maxValue, insa se va calcula valoarea medie a
+            # actiunilor fantomelor
+            for action in gameState.getLegalActions(agentIndex):
+                successorState = gameState.generateSuccessor(agentIndex, action)  # starea succesorului
+                tempValue = self.maxValue(self.PACMAN_INDEX, successorState, depth + 1)  # incrementare depth(adancime)
+                avg_v += tempValue
+        return avg_v/float(actionsNum)  # returneaza valoarea medie
 
 
 def betterEvaluationFunction(currentGameState):
