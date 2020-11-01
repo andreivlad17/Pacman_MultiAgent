@@ -242,38 +242,55 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
         """
           Returns the minimax action using self.depth and self.evaluationFunction
         """
+        # returnez actiunea din tupla rezultata in urma aplicarii algoritmului de
+        # alpha-beta search, pornind de la valorile standard -infinit, +infinit
         v = self.maxValue(0, 0, state, float("-inf"), float("inf"))
         return v[0]
 
     def alphaBetaSearch(self, index, depth, state, alpha, beta):
+        # Verifica daca starea curenta este una finala, indiferent de cazul terminal
         if state.isLose() or state.isWin() or depth is self.depth * state.getNumAgents():
+            # Daca este finala, utilizeaza functia de evaluare a starii
             return self.evaluationFunction(state)
+        # In functie de indexul la care se afla trasarea, apeleaza unul dintre cei
+        # 2 algoritmi pentru a extrage valoarea nodului
         if index == 0:
             return self.maxValue(index, depth, state, alpha, beta)[1]
         else:
             return self.minValue(index, depth, state, alpha, beta)[1]
 
     def maxValue(self, index, depth, state, alpha, beta):
+        # Verifica daca starea curenta este una finala, indiferent de cazul terminal
         if state.isLose() or state.isWin() or depth is self.depth * state.getNumAgents():
             return self.evaluationFunction(state)
+        # initializeaza value cu tupla formata din tagul "max" si -infinit
         value = ("max", float("-inf"))
         for action in state.getLegalActions(index):
             # value va lua valoarea tuplei cu valoare flotanta(index 1) maxima
+            # a doua valoare comparata este alpha-beta search de la urmatorul
+            # nivel de adancime din arbore pentru minim sau maxim, in functie
+            # de indexul agentului
             value = max(value, (action, self.alphaBetaSearch((depth + 1) % state.getNumAgents(), depth + 1,
                                                              state.generateSuccessor(index, action), alpha, beta)),
                         key=operator.itemgetter(1))
 
             # Pruning - nu functioneaza cu >= ca in indrumator
+            # In acest caz nu se mai expandeaza nodurile adiacente
+            # si se pastreaza valoarea curenta
             if value[1] > beta:
                 return value
             else:
+                # Daca nu este caz de Pruning, alpha va fi maximul dintre cele
+                # 2 valori primite ca parametru, respectiv calculate
                 alpha = max(alpha, value[1])
 
         return value
 
+    # Acelasi rationament ca la maxValue, dar cu mici diferente
     def minValue(self, index, depth, state, alpha, beta):
         if state.isLose() or state.isWin() or depth is self.depth * state.getNumAgents():
             return self.evaluationFunction(state)
+        # value va fi initializat cu tagul de "min" si valoarea +infinit
         value = ("min", float("inf"))
         for action in state.getLegalActions(index):
             # value va lua valoarea tuplei cu valoare flotanta(index 1) minima
@@ -282,9 +299,12 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
                         key=operator.itemgetter(1))
 
             # Pruning - nu functioneaza cu <= ca in indrumator
+            # Daca valoarea curenta este mai mica decat cea din alpha apare
+            # pruning-ul
             if value[1] < alpha:
                 return value
             else:
+                # Beta va lua valoarea minima dintre cele 2 valori
                 beta = min(beta, value[1])
 
         return value
